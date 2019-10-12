@@ -8,11 +8,14 @@ import os
 # from prompt_toolkit import 
 
 loading = False
+yt_list = []
+filesize = 0
+file_title = ''
 
 def main():
     start_print()
     urls = repeat_question(YOUTUBE_URL, QUESTION_YOUTUBE_URL, is_url=True)
-    yt_list = repeat_print(urls)
+    yt_list = prefetch_youtube_urls(urls)
     for yt in yt_list:
         print(yt.title)
     answer = prompt({
@@ -24,7 +27,14 @@ def main():
         for yt in yt_list:
             try:
                 stream = yt.streams.first()
-                stream.download()
+                global filesize
+                global file_title
+                if len(stream.title) > 15:
+                    file_title = stream.title[:15]
+                else:
+                    file_title = stream.title
+                filesize = stream.filesize
+                stream.download(filename=file_title)
             except:
                 print_warning('다운로드 실패({})'.format(yt.title))
                 continue
@@ -38,8 +48,8 @@ def repeat_question(key, question, exit_answer='q', possible_empty=False, **kwar
     answer_list = []
     question = {
         'type': question['type'],
-            'name': question['name'],
-            'message': question['message'] + '(`{}` for exit)'.format(exit_answer)
+        'name': question['name'],
+        'message': question['message'] + '(`{}` for exit)'.format(exit_answer)
     }
     while True:
         answer = prompt(question)[key]
@@ -57,13 +67,16 @@ def repeat_question(key, question, exit_answer='q', possible_empty=False, **kwar
     return answer_list
 
 
-def repeat_print(list):
+def prefetch_youtube_urls(list):
     # print('총 {}개의 영상 확인.'.format(len(list)))
     print('총 %i개의 영상 확인' % len(list))
     repeat_loading_print('YouTube 주소에 대한 영상 정보를 가져오는중.')
     yt_list = []
     for item in list:
-        yt_list.append(YouTube(item))
+        try:
+            yt_list.append(YouTube(item, on_progress_callback=progress_function))
+        except:
+            continue
     global loading
     loading = False
     return yt_list
@@ -93,11 +106,39 @@ def repeat_printing(s, timeout=1):
             break
         dot = increment % 3
         space = 3 - dot
-        print("{}{}{} - {}/{}".format(s, ("." * dot), (" " * space), ), end="\r")
+        print("{}{}{}".format(s, ("." * dot), (" " * space)), end="\r")
         time.sleep(timeout)
         increment += 1
     width = os.get_terminal_size().columns
     print(' ' * width)
+
+
+def progress_function(stream, chunk, file_handle, bytes_remaining):
+    iteration = filesize - bytes_remaining
+    printProgressBar(iteration, filesize, prefix=file_title, length=50)
+
+
+# Print iterations progress
+def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
+    """
+    Call in a loop to create terminal progress bar
+    @params:
+        iteration   - Required  : current iteration (Int)
+        total       - Required  : total iterations (Int)
+        prefix      - Optional  : prefix string (Str)
+        suffix      - Optional  : suffix string (Str)
+        decimals    - Optional  : positive number of decimals in percent complete (Int)
+        length      - Optional  : character length of bar (Int)
+        fill        - Optional  : bar fill character (Str)
+        printEnd    - Optional  : end character (e.g. "\r", "\r\n") (Str)
+    """
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    filledLength = int(length * iteration // total)
+    bar = fill * filledLength + '-' * (length - filledLength)
+    print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end = printEnd)
+    # Print New Line on Complete
+    if iteration == total: 
+        print()
 
 
 if __name__ == '__main__':
