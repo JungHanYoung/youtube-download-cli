@@ -1,8 +1,8 @@
 from PyInquirer import prompt, color_print
-from question_format import QUESTION_YOUTUBE_URL, YOUTUBE_URL
+from question_format import QUESTION_YOUTUBE_URL, YOUTUBE_URL, QUESTION_CONFIRM_DOWNLOAD, CONFIRM_DOWNLOAD
 from color_print_factory import print_yt, print_warning, print_info
 from pytube import YouTube
-import threading, time
+import threading, time, cursor
 import re
 import os
 # from prompt_toolkit import 
@@ -18,12 +18,9 @@ def main():
     yt_list = prefetch_youtube_urls(urls)
     for yt in yt_list:
         print(yt.title)
-    answer = prompt({
-        'type': 'confirm',
-        'name': 'download',
-        'message': '다운로드를 진행하시겠습니까?'
-    })['download']
+    answer = prompt(QUESTION_CONFIRM_DOWNLOAD)[CONFIRM_DOWNLOAD]
     if answer:
+        cursor.hide()
         for yt in yt_list:
             try:
                 stream = yt.streams.first()
@@ -38,7 +35,7 @@ def main():
             except:
                 print_warning('다운로드 실패({})'.format(yt.title))
                 continue
-
+        cursor.show()
 
 
 def repeat_question(key, question, exit_answer='q', possible_empty=False, **kwargs):
@@ -115,7 +112,7 @@ def repeat_printing(s, timeout=1):
 
 def progress_function(stream, chunk, file_handle, bytes_remaining):
     iteration = filesize - bytes_remaining
-    printProgressBar(iteration, filesize, prefix=file_title, length=50)
+    printProgressBar(iteration, filesize, prefix=file_title + '\t', length=50, fill='#')
 
 
 # Print iterations progress
@@ -134,7 +131,7 @@ def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, 
     """
     percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
     filledLength = int(length * iteration // total)
-    bar = fill * filledLength + '-' * (length - filledLength)
+    bar = fill * filledLength + ' ' * (length - filledLength)
     print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end = printEnd)
     # Print New Line on Complete
     if iteration == total: 
